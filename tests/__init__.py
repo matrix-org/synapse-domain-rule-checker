@@ -1,6 +1,7 @@
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import attr
+from synapse.module_api import StateMap
 
 from synapse_domain_rule_checker import DomainRuleChecker, EventTypes
 
@@ -36,19 +37,19 @@ class MockModuleApi:
     _new_room: bool
     _published: bool
 
-    def register_spam_checker_callbacks(self, *args, **kwargs):
+    def register_spam_checker_callbacks(self, *args: Any, **kwargs: Any) -> None:
         """Don't fail when the module tries to register its callbacks."""
         pass
 
     @property
-    def public_room_list_manager(self):
+    def public_room_list_manager(self) -> MockPublicRoomListManager:
         """Returns a mock public room list manager. We could in theory return a Mock with
         a return value of make_awaitable(self._published), but local testing seems to show
         this doesn't work on all versions of Python.
         """
         return MockPublicRoomListManager(self._published)
 
-    async def get_room_state(self, *args, **kwargs):
+    async def get_room_state(self, *args: Any, **kwargs: Any) -> StateMap[MockEvent]:
         """Mocks the ModuleApi's get_room_state method, by returning mock events. The
         number of events depends on whether we're testing for a new room or not (if the
         room is not new it will have an extra user joined to it).
@@ -66,7 +67,7 @@ class MockModuleApi:
 
 
 def create_module(
-    config_dict: dict, new_room: bool, published: bool
+    config_dict: Dict[str, Any], new_room: bool, published: bool
 ) -> DomainRuleChecker:
     # Create a mock based on the ModuleApi spec, but override some mocked functions
     # because some capabilities are needed for running the tests.

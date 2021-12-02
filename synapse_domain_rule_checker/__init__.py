@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import attr
 from synapse.module_api import ModuleApi
@@ -35,7 +35,7 @@ class DomainRuleCheckerConfig:
     can_only_join_rooms_with_invite: bool = False
     can_only_invite_during_room_creation: bool = False
     can_invite_by_third_party_id: bool = True
-    domains_prevented_from_being_invited_to_published_rooms: Optional[List] = None
+    domains_prevented_from_being_invited_to_published_rooms: Optional[List[str]] = None
 
 
 class DomainRuleChecker(object):
@@ -165,7 +165,12 @@ class DomainRuleChecker(object):
 
         return invitee_domain in self._domain_mapping[inviter_domain]
 
-    async def user_may_join_room(self, userid, room_id, is_invited):
+    async def user_may_join_room(
+        self,
+        userid: str,
+        room_id: str,
+        is_invited: bool,
+    ) -> bool:
         """Implements the user_may_join_room spam checker callback."""
         if self._config.can_only_join_rooms_with_invite and not is_invited:
             return False
@@ -173,7 +178,7 @@ class DomainRuleChecker(object):
         return True
 
     @staticmethod
-    def parse_config(config):
+    def parse_config(config: Dict[str, Any]) -> DomainRuleCheckerConfig:
         """Checks whether required fields exist in the provided configuration for the
         module.
         """
@@ -185,14 +190,14 @@ class DomainRuleChecker(object):
             )
 
     @staticmethod
-    def _get_domain_from_id(mxid):
+    def _get_domain_from_id(mxid: str) -> str:
         """Parses a string and returns the domain part of the mxid.
 
         Args:
-           mxid (str): a valid mxid
+           mxid: a valid mxid
 
         Returns:
-           str: the domain part of the mxid
+           The domain part of the mxid
 
         """
         idx = mxid.find(":")

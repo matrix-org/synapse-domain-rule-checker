@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import aiounittest
 from synapse.module_api.errors import ConfigError
@@ -23,24 +23,29 @@ from tests import create_module
 class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
     async def _test_user_may_invite(
         self,
-        config: dict,
+        config: Dict[str, Any],
         inviter: str,
         invitee: Optional[str],
         new_room: bool,
         published: bool,
     ) -> bool:
         checker = create_module(config, new_room, published)
-        return await checker.user_may_invite(inviter, invitee, "room")
+        if invitee is None:
+            return await checker.user_may_send_3pid_invite(
+                inviter, "email", "a@b", "!r"
+            )
+        else:
+            return await checker.user_may_invite(inviter, invitee, "!r")
 
     async def _test_user_may_join_room(
         self,
-        config: dict,
+        config: Dict[str, Any],
         is_invited: bool,
-    ):
+    ) -> bool:
         checker = create_module(config, False, False)
         return await checker.user_may_join_room("@a:b", "!r", is_invited)
 
-    async def test_allowed(self):
+    async def test_allowed(self) -> None:
         config = {
             "can_invite_if_not_in_domain_mapping": False,
             "domain_mapping": {
@@ -105,7 +110,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
             ),
         )
 
-    async def test_disallowed(self):
+    async def test_disallowed(self) -> None:
         config = {
             "can_invite_if_not_in_domain_mapping": True,
             "domain_mapping": {
@@ -163,7 +168,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
             )
         )
 
-    async def test_default_allow(self):
+    async def test_default_allow(self) -> None:
         """Tests that invites are allowed even when a server isn't in the domain mapping
         if the config says so.
         """
@@ -185,7 +190,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
             )
         )
 
-    async def test_default_deny(self):
+    async def test_default_deny(self) -> None:
         """Tests that invites are denied when a server isn't in the domain mapping if the
         config says so.
         """
@@ -207,7 +212,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
             )
         )
 
-    async def test_3pid_invite_denied(self):
+    async def test_3pid_invite_denied(self) -> None:
         """Tests that 3PID invites are denied if the config says so."""
         config = {
             "can_invite_if_not_in_domain_mapping": False,
@@ -224,7 +229,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
             )
         )
 
-    async def test_3pid_invite_allowed(self):
+    async def test_3pid_invite_allowed(self) -> None:
         """Tests that 3PID invites are allowed if the config says so."""
         config = {
             "can_invite_if_not_in_domain_mapping": False,
@@ -241,7 +246,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
             )
         )
 
-    async def test_join_room(self):
+    async def test_join_room(self) -> None:
         """Tests that the module conditions whether a user is able to join a room based
         on the configuration.
         """
@@ -258,7 +263,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         self.assertTrue(await self._test_user_may_join_room(config, True))
         self.assertTrue(await self._test_user_may_join_room(config, False))
 
-    def test_config_parse(self):
+    def test_config_parse(self) -> None:
         """Tests that a correct configuration passes parse_config."""
         config = {
             "can_invite_if_not_in_domain_mapping": False,
@@ -272,7 +277,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         self.assertFalse(parsed_config.can_invite_if_not_in_domain_mapping)
         self.assertEqual(parsed_config.domain_mapping, config["domain_mapping"])
 
-    def test_config_parse_failure(self):
+    def test_config_parse_failure(self) -> None:
         """Tests that a bad configuration doesn't pass parse_config."""
         config = {
             "domain_mapping": {
