@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
+from typing import List, Optional, Dict
 
 import attr
 from synapse.module_api import ModuleApi
@@ -30,7 +30,12 @@ class Membership:
 
 @attr.s(auto_attribs=True, frozen=True)
 class DomainRuleCheckerConfig:
-    pass
+    can_invite_if_not_in_domain_mapping: bool
+    domain_mapping: Optional[Dict[str, List[str]]] = None
+    can_only_join_rooms_with_invite: bool = False
+    can_only_invite_during_room_creation: bool = False
+    can_invite_by_third_party_id: bool = True
+    domains_prevented_from_being_invited_to_published_rooms: Optional[List] = None
 
 
 class DomainRuleChecker(object):
@@ -69,23 +74,8 @@ class DomainRuleChecker(object):
     Don't forget to consider if you can invite users from your own domain.
     """
 
-    def __init__(self, config, api: ModuleApi):
-        self.domain_mapping = config["domain_mapping"] or {}
-        self.default = config["default"]
-
-        self.can_only_join_rooms_with_invite = config.get(
-            "can_only_join_rooms_with_invite", False
-        )
-        self.can_only_invite_during_room_creation = config.get(
-            "can_only_invite_during_room_creation", False
-        )
-        self.can_invite_by_third_party_id = config.get(
-            "can_invite_by_third_party_id", True
-        )
-        self.domains_prevented_from_being_invited_to_published_rooms = config.get(
-            "domains_prevented_from_being_invited_to_published_rooms", []
-        )
-
+    def __init__(self, config: DomainRuleCheckerConfig, api: ModuleApi):
+        self._config = config
         self._api = api
 
         self._api.register_spam_checker_callbacks(
@@ -176,20 +166,23 @@ class DomainRuleChecker(object):
         """
         new_room = await self._is_new_room(room_id)
 
-        if self.can_only_invite_during_room_creation and not new_room:
+        if self._config.can_only_invite_during_room_creation and not new_room:
             return False
 
         # If invitee_userid is None, then this means this is a 3PID invite (without a
         # bound MXID), so we allow it unless the configuration mandates blocking all 3PID
         # invites.
         if invitee_userid is None:
-            return self.can_invite_by_third_party_id
+            return self._config.can_invite_by_third_party_id
 
         inviter_domain = self._get_domain_from_id(inviter_userid)
         invitee_domain = self._get_domain_from_id(invitee_userid)
 
-        if inviter_domain not in self.domain_mapping:
-            return self.default
+        if (
+            not self._config.domain_mapping
+            or inviter_domain not in self._config.domain_mapping
+        ):
+            return self._config.can_invite_if_not_in_domain_mapping
 
         published_room = (
             await self._api.public_room_list_manager.room_is_in_public_room_list(
@@ -200,15 +193,19 @@ class DomainRuleChecker(object):
         if (
             published_room
             and invitee_domain
-            in self.domains_prevented_from_being_invited_to_published_rooms
+            in self._config.domains_prevented_from_being_invited_to_published_rooms
         ):
             return False
 
-        return invitee_domain in self.domain_mapping[inviter_domain]
+        allowed_domains = []
+        if self._config.domain_mapping:
+            allowed_domains = self._config.domain_mapping[inviter_domain]
+
+        return invitee_domain in allowed_domains
 
     async def user_may_join_room(self, userid, room_id, is_invited):
         """Implements the user_may_join_room spam checker callback."""
-        if self.can_only_join_rooms_with_invite and not is_invited:
+        if self._config.can_only_join_rooms_with_invite and not is_invited:
             return False
 
         return True
@@ -218,10 +215,12 @@ class DomainRuleChecker(object):
         """Checks whether required fields exist in the provided configuration for the
         module.
         """
-        if "default" in config:
-            return config
+        if "can_invite_if_not_in_domain_mapping" in config:
+            return DomainRuleCheckerConfig(**config)
         else:
-            raise ConfigError("No default set for spam_config DomainRuleChecker")
+            raise ConfigError(
+                "DomainRuleChecker: can_invite_if_not_in_domain_mapping is required",
+            )
 
     @staticmethod
     def _get_domain_from_id(mxid):
