@@ -192,6 +192,10 @@ class DomainRuleChecker(object):
 
         if (
             published_room
+            and (
+                self._config.domains_prevented_from_being_invited_to_published_rooms
+                is not None
+            )
             and invitee_domain
             in self._config.domains_prevented_from_being_invited_to_published_rooms
         ):
