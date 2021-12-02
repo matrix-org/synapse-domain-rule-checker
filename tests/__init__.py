@@ -1,8 +1,6 @@
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import attr
-from mock import Mock
-from synapse.module_api import ModuleApi
 
 from synapse_domain_rule_checker import DomainRuleChecker, EventTypes
 
@@ -68,9 +66,7 @@ class MockModuleApi:
 
 
 def create_module(
-    config_dict: dict,
-    new_room: bool,
-    published: bool
+    config_dict: dict, new_room: bool, published: bool
 ) -> DomainRuleChecker:
     # Create a mock based on the ModuleApi spec, but override some mocked functions
     # because some capabilities are needed for running the tests.

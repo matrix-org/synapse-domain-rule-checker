@@ -14,7 +14,6 @@
 from typing import Optional
 
 import aiounittest
-
 from synapse.module_api.errors import ConfigError
 
 from synapse_domain_rule_checker import DomainRuleChecker
