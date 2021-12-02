@@ -39,41 +39,6 @@ class DomainRuleCheckerConfig:
 
 
 class DomainRuleChecker(object):
-    """
-    A re-implementation of the SpamChecker that prevents users in one domain from
-    inviting users in other domains to rooms, based on a configuration.
-
-    Takes a config in the format:
-
-    spam_checker:
-        module: "rulecheck.DomainRuleChecker"
-        config:
-          domain_mapping:
-            "inviter_domain": [ "invitee_domain_permitted", "other_domain_permitted" ]
-            "other_inviter_domain": [ "invitee_domain_permitted" ]
-          default: False
-
-          # Only let local users join rooms if they were explicitly invited.
-          can_only_join_rooms_with_invite: false
-
-          # Only let local users create rooms if they are inviting only one
-          # other user, and that user matches the rules above.
-          can_only_create_one_to_one_rooms: false
-
-          # Only let local users invite during room creation, regardless of the
-          # domain mapping rules above.
-          can_only_invite_during_room_creation: false
-
-          # Prevent local users from inviting users from certain domains to
-          # rooms published in the room directory.
-          domains_prevented_from_being_invited_to_published_rooms: []
-
-          # Allow third party invites
-          can_invite_by_third_party_id: true
-
-    Don't forget to consider if you can invite users from your own domain.
-    """
-
     def __init__(self, config: DomainRuleCheckerConfig, api: ModuleApi):
         self._config = config
         self._domain_mapping = config.domain_mapping or {}
