@@ -76,4 +76,5 @@ def create_module(
     # If necessary, give parse_config some configuration to parse.
     config = DomainRuleChecker.parse_config(config_dict)
 
-    return DomainRuleChecker(config, module_api)
+    # Tell mypy to ignore that we're giving the module a fake ModuleApi.
+    return DomainRuleChecker(config, module_api)  # type: ignore[arg-type]
