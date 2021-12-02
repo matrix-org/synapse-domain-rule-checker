@@ -4,37 +4,79 @@ import attr
 from mock import Mock
 from synapse.module_api import ModuleApi
 
-from synapse_domain_rule_checker import DomainRuleChecker
+from synapse_domain_rule_checker import DomainRuleChecker, EventTypes
 
 
 @attr.s(auto_attribs=True)
 class MockEvent:
-    """Mocks an event. Only exposes properties the module uses."""
-    sender: str
-    type: str
-    content: Dict[str, Any]
-    room_id: str = "!someroom"
-    state_key: Optional[str] = None
+    """Mock of an event, only implementing the fields the DomainRuleChecker module will
+    use.
+    """
 
-    def is_state(self) -> bool:
-        """Checks if the event is a state event by checking if it has a state key."""
-        return self.state_key is not None
+    sender: str
+    membership: Optional[str] = None
+
+
+@attr.s(auto_attribs=True)
+class MockPublicRoomListManager:
+    """Mock of a synapse.module_api.PublicRoomListManager, only implementing the method
+    the DomainRuleChecker module will use.
+    """
+
+    _published: bool
+
+    async def room_is_in_public_room_list(self, room_id: str) -> bool:
+        return self._published
+
+
+@attr.s(auto_attribs=True)
+class MockModuleApi:
+    """Mock of a synapse.module_api.ModuleApi, only implementing the methods the
+    DomainRuleChecker module will use.
+    """
+
+    _new_room: bool
+    _published: bool
+
+    def register_spam_checker_callbacks(self, *args, **kwargs):
+        """Don't fail when the module tries to register its callbacks."""
+        pass
 
     @property
-    def membership(self) -> str:
-        """Extracts the membership from the event. Should only be called on an event
-        that's a membership event, and will raise a KeyError otherwise.
+    def public_room_list_manager(self):
+        """Returns a mock public room list manager. We could in theory return a Mock with
+        a return value of make_awaitable(self._published), but local testing seems to show
+        this doesn't work on all versions of Python.
         """
-        membership: str = self.content["membership"]
-        return membership
+        return MockPublicRoomListManager(self._published)
+
+    async def get_room_state(self, *args, **kwargs):
+        """Mocks the ModuleApi's get_room_state method, by returning mock events. The
+        number of events depends on whether we're testing for a new room or not (if the
+        room is not new it will have an extra user joined to it).
+        """
+        state = {
+            (EventTypes.Create, ""): MockEvent("room_creator"),
+            (EventTypes.Member, "room_creator"): MockEvent("room_creator", "join"),
+            (EventTypes.Member, "invitee"): MockEvent("room_creator", "invite"),
+        }
+
+        if not self._new_room:
+            state[(EventTypes.Member, "joinee")] = MockEvent("joinee", "join")
+
+        return state
 
 
-def create_module() -> DomainRuleChecker:
+def create_module(
+    config_dict: dict,
+    new_room: bool,
+    published: bool
+) -> DomainRuleChecker:
     # Create a mock based on the ModuleApi spec, but override some mocked functions
     # because some capabilities are needed for running the tests.
-    module_api = Mock(spec=ModuleApi)
+    module_api = MockModuleApi(new_room, published)
 
     # If necessary, give parse_config some configuration to parse.
-    config = DomainRuleChecker.parse_config({})
+    config = DomainRuleChecker.parse_config(config_dict)
 
     return DomainRuleChecker(config, module_api)
