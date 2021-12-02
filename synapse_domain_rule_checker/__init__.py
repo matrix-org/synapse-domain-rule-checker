@@ -203,7 +203,7 @@ class DomainRuleChecker(object):
 
         allowed_domains = []
         if self._config.domain_mapping:
-            allowed_domains = self._config.domain_mapping[inviter_domain]
+            allowed_domains = self._config.domain_mapping.get(inviter_domain) or []
 
         return invitee_domain in allowed_domains
 
