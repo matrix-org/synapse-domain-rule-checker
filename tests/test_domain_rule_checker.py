@@ -51,6 +51,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
             "domains_prevented_from_being_invited_to_published_rooms": ["target_two"],
         }
 
+        # Check that a user can invite a remote server if the domain mapping allows it.
         self.assertTrue(
             await self._test_user_may_invite(
                 config,
@@ -61,6 +62,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
             ),
         )
 
+        # Check that a user can invite a remote server if the domain mapping allows it.
         self.assertTrue(
             await self._test_user_may_invite(
                 config,
@@ -71,6 +73,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
             ),
         )
 
+        # Check that a user can invite a remote server if the domain mapping allows it.
         self.assertTrue(
             await self._test_user_may_invite(
                 config,
@@ -114,6 +117,8 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
             "domains_prevented_from_being_invited_to_published_rooms": ["target_two"],
         }
 
+        # Check that a user can't invite a remote server if the domain mapping doesn't
+        # allow it.
         self.assertFalse(
             await self._test_user_may_invite(
                 config,
@@ -123,6 +128,9 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
                 False,
             )
         )
+
+        # Check that a user can't invite a remote server if the domain mapping doesn't
+        # allow it.
         self.assertFalse(
             await self._test_user_may_invite(
                 config,
@@ -132,11 +140,17 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
                 False,
             )
         )
+
+        # Check that a user can't invite a remote server if the domain mapping doesn't
+        # allow it.
         self.assertFalse(
             await self._test_user_may_invite(
                 config, "test:source_two", "test:target_one", False, False
             )
         )
+
+        # Check that a user can't invite a remote server if the domain mapping doesn't
+        # allow it.
         self.assertFalse(
             await self._test_user_may_invite(
                 config, "test:source_four", "test:target_one", False, False
@@ -151,6 +165,9 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         )
 
     async def test_default_allow(self):
+        """Tests that invites are allowed even when a server isn't in the domain mapping
+        if the config says so.
+        """
         config = {
             "can_invite_if_not_in_domain_mapping": True,
             "domain_mapping": {
@@ -170,6 +187,9 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         )
 
     async def test_default_deny(self):
+        """Tests that invites are denied when a server isn't in the domain mapping if the
+        config says so.
+        """
         config = {
             "can_invite_if_not_in_domain_mapping": False,
             "domain_mapping": {
@@ -189,6 +209,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         )
 
     async def test_3pid_invite_denied(self):
+        """Tests that 3PID invites are denied if the config says so."""
         config = {
             "can_invite_if_not_in_domain_mapping": False,
             "can_invite_by_third_party_id": False,
@@ -205,6 +226,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         )
 
     async def test_3pid_invite_allowed(self):
+        """Tests that 3PID invites are allowed if the config says so."""
         config = {
             "can_invite_if_not_in_domain_mapping": False,
             "can_invite_by_third_party_id": True,
@@ -221,6 +243,9 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         )
 
     async def test_join_room(self):
+        """Tests that the module conditions whether a user is able to join a room based
+        on the configuration.
+        """
         config = {
             "can_invite_if_not_in_domain_mapping": False,
             "can_only_join_rooms_with_invite": True,
@@ -235,6 +260,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         self.assertTrue(await self._test_user_may_join_room(config, False))
 
     def test_config_parse(self):
+        """Tests that a correct configuration passes parse_config."""
         config = {
             "can_invite_if_not_in_domain_mapping": False,
             "domain_mapping": {
@@ -248,6 +274,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         self.assertEqual(parsed_config.domain_mapping, config["domain_mapping"])
 
     def test_config_parse_failure(self):
+        """Tests that a bad configuration doesn't pass parse_config."""
         config = {
             "domain_mapping": {
                 "source_one": ["target_one", "target_two"],
