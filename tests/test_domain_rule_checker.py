@@ -33,6 +33,14 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         checker = create_module(config, new_room, published)
         return await checker.user_may_invite(inviter, invitee, "room")
 
+    async def _test_user_may_join_room(
+        self,
+        config: dict,
+        is_invited: bool,
+    ):
+        checker = create_module(config, False, False)
+        return await checker.user_may_join_room("@a:b", "!r", is_invited)
+
     async def test_allowed(self):
         config = {
             "can_invite_if_not_in_domain_mapping": False,
@@ -178,6 +186,52 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
                 False,
             )
         )
+
+    async def test_3pid_invite_denied(self):
+        config = {
+            "can_invite_if_not_in_domain_mapping": False,
+            "can_invite_by_third_party_id": False,
+        }
+
+        self.assertFalse(
+            await self._test_user_may_invite(
+                config,
+                "test:source_one",
+                None,
+                False,
+                False,
+            )
+        )
+
+    async def test_3pid_invite_allowed(self):
+        config = {
+            "can_invite_if_not_in_domain_mapping": False,
+            "can_invite_by_third_party_id": True,
+        }
+
+        self.assertTrue(
+            await self._test_user_may_invite(
+                config,
+                "test:source_one",
+                None,
+                False,
+                False,
+            )
+        )
+
+    async def test_join_room(self):
+        config = {
+            "can_invite_if_not_in_domain_mapping": False,
+            "can_only_join_rooms_with_invite": True,
+        }
+
+        self.assertTrue(await self._test_user_may_join_room(config, True))
+        self.assertFalse(await self._test_user_may_join_room(config, False))
+
+        config["can_only_join_rooms_with_invite"] = False
+
+        self.assertTrue(await self._test_user_may_join_room(config, True))
+        self.assertTrue(await self._test_user_may_join_room(config, False))
 
     def test_config_parse(self):
         config = {
