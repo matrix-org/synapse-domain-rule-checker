@@ -111,6 +111,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
                 "source_two": ["target_two"],
                 "source_four": [],
             },
+            "domains_prevented_from_being_invited_to_published_rooms": ["target_two"],
         }
 
         self.assertFalse(
@@ -143,7 +144,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         )
 
         # User cannot invite external user to a published room
-        self.assertTrue(
+        self.assertFalse(
             await self._test_user_may_invite(
                 config, "test:source_one", "test:target_two", False, True
             )
