@@ -76,6 +76,10 @@ class DomainRuleChecker(object):
 
     def __init__(self, config: DomainRuleCheckerConfig, api: ModuleApi):
         self._config = config
+        self._domain_mapping = config.domain_mapping or {}
+        self._domains_prevented_from_being_invited_to_published_rooms = (
+            config.domains_prevented_from_being_invited_to_published_rooms or []
+        )
         self._api = api
 
         self._api.register_spam_checker_callbacks(
@@ -178,12 +182,6 @@ class DomainRuleChecker(object):
         inviter_domain = self._get_domain_from_id(inviter_userid)
         invitee_domain = self._get_domain_from_id(invitee_userid)
 
-        if (
-            not self._config.domain_mapping
-            or inviter_domain not in self._config.domain_mapping
-        ):
-            return self._config.can_invite_if_not_in_domain_mapping
-
         published_room = (
             await self._api.public_room_list_manager.room_is_in_public_room_list(
                 room_id
@@ -192,20 +190,15 @@ class DomainRuleChecker(object):
 
         if (
             published_room
-            and (
-                self._config.domains_prevented_from_being_invited_to_published_rooms
-                is not None
-            )
             and invitee_domain
-            in self._config.domains_prevented_from_being_invited_to_published_rooms
+            in self._domains_prevented_from_being_invited_to_published_rooms
         ):
             return False
 
-        allowed_domains = []
-        if self._config.domain_mapping:
-            allowed_domains = self._config.domain_mapping.get(inviter_domain) or []
+        if inviter_domain not in self._domain_mapping:
+            return self._config.can_invite_if_not_in_domain_mapping
 
-        return invitee_domain in allowed_domains
+        return invitee_domain in self._domain_mapping[inviter_domain]
 
     async def user_may_join_room(self, userid, room_id, is_invited):
         """Implements the user_may_join_room spam checker callback."""
