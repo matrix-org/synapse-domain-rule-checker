@@ -288,7 +288,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         }
         self.assertRaises(ConfigError, DomainRuleChecker.parse_config, config)
 
-    def test_invite_unknown_room(self) -> None:
+    async def test_invite_unknown_room(self) -> None:
         """Tests that processing an invite for a room we don't have state for makes the
         module think the room is not new, and therefore rejects the invite if the server
         is only configured to accept invites during room creation.
