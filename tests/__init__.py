@@ -36,6 +36,7 @@ class MockModuleApi:
 
     _new_room: bool
     _published: bool
+    _unknown_room: bool
 
     def register_spam_checker_callbacks(self, *args: Any, **kwargs: Any) -> None:
         """Don't fail when the module tries to register its callbacks."""
@@ -52,8 +53,12 @@ class MockModuleApi:
     async def get_room_state(self, *args: Any, **kwargs: Any) -> StateMap[MockEvent]:
         """Mocks the ModuleApi's get_room_state method, by returning mock events. The
         number of events depends on whether we're testing for a new room or not (if the
-        room is not new it will have an extra user joined to it).
+        room is not new it will have an extra user joined to it), or if the room is know
+        or not.
         """
+        if self._unknown_room:
+            return {}
+
         state = {
             (EventTypes.Create, ""): MockEvent("room_creator"),
             (EventTypes.Member, "room_creator"): MockEvent("room_creator", "join"),
@@ -67,11 +72,11 @@ class MockModuleApi:
 
 
 def create_module(
-    config_dict: Dict[str, Any], new_room: bool, published: bool
+    config_dict: Dict[str, Any], new_room: bool, published: bool, unknown_room: bool
 ) -> DomainRuleChecker:
     # Create a mock based on the ModuleApi spec, but override some mocked functions
     # because some capabilities are needed for running the tests.
-    module_api = MockModuleApi(new_room, published)
+    module_api = MockModuleApi(new_room, published, unknown_room)
 
     # If necessary, give parse_config some configuration to parse.
     config = DomainRuleChecker.parse_config(config_dict)

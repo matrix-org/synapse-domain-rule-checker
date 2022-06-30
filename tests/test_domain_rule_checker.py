@@ -28,8 +28,9 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         invitee: Optional[str],
         new_room: bool,
         published: bool,
+        unknown_room: bool = False,
     ) -> bool:
-        checker = create_module(config, new_room, published)
+        checker = create_module(config, new_room, published, unknown_room)
         if invitee is None:
             return await checker.user_may_send_3pid_invite(
                 inviter, "email", "a@b", "!r"
@@ -42,7 +43,7 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         config: Dict[str, Any],
         is_invited: bool,
     ) -> bool:
-        checker = create_module(config, False, False)
+        checker = create_module(config, False, False, False)
         return await checker.user_may_join_room("@a:b", "!r", is_invited)
 
     async def test_allowed(self) -> None:
@@ -286,3 +287,27 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
             }
         }
         self.assertRaises(ConfigError, DomainRuleChecker.parse_config, config)
+
+    def test_invite_unknown_room(self) -> None:
+        """Tests that processing an invite for a room we don't have state for makes the
+        module think the room is not new, and therefore rejects the invite if the server
+        is only configured to accept invites during room creation.
+
+        It is possible to receive an invite for a room we don't have state for if we've
+        received the invite over federation and we're not yet in the room.
+        """
+
+        config = {
+            "can_only_invite_during_room_creation": True
+        }
+
+        self.assertFalse(
+            await self._test_user_may_invite(
+                config,
+                "@test:source_one",
+                "@test2:source_one",
+                False,
+                False,
+                unknown_room=True,
+            )
+        )
