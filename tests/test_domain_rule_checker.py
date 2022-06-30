@@ -297,7 +297,10 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
         received the invite over federation and we're not yet in the room.
         """
 
-        config = {"can_only_invite_during_room_creation": True}
+        config = {
+            "can_invite_if_not_in_domain_mapping": True,
+            "can_only_invite_during_room_creation": True,
+        }
 
         self.assertFalse(
             await self._test_user_may_invite(
