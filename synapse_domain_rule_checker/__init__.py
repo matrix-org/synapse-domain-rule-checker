@@ -73,7 +73,16 @@ class DomainRuleChecker(object):
 
         events = await self._api.get_room_state(room_id, state_event_filter)
 
-        room_creator = events[(EventTypes.Create, "")].sender
+        create_event = events.get((EventTypes.Create, ""))
+        if create_event is None:
+            # If we don't have a create event for this room then it means we're processing
+            # an invite we've received over federation, for a room we're not yet in. So
+            # we can't pull the data we need to check whether the room is new or not.
+            # In this case, we assume the remote homeserver, which knows the state of the
+            # room, has done the necessary checks and has vetted this invite.
+            return False
+
+        room_creator = create_event.sender
 
         for key, event in events.items():
             if key[0] == EventTypes.Create:
@@ -133,10 +142,11 @@ class DomainRuleChecker(object):
         Returns:
             Whether the invite can be allowed to go through.
         """
-        new_room = await self._is_new_room(room_id)
 
-        if self._config.can_only_invite_during_room_creation and not new_room:
-            return False
+        if self._config.can_only_invite_during_room_creation:
+            # If we can only invite during room creation, check whether our
+            if not await self._is_new_room(room_id):
+                return False
 
         # If invitee_userid is None, then this means this is a 3PID invite (without a
         # bound MXID), so we allow it unless the configuration mandates blocking all 3PID
