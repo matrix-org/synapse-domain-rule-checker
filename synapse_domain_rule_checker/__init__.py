@@ -144,7 +144,8 @@ class DomainRuleChecker(object):
         """
 
         if self._config.can_only_invite_during_room_creation:
-            # If we can only invite during room creation, check whether our
+            # If we can only invite during room creation, check whether this invite is
+            # for a room that fits our definition of new.
             if not await self._is_new_room(room_id):
                 return False
 
