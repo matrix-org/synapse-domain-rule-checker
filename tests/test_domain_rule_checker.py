@@ -312,3 +312,24 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
                 unknown_room=True,
             )
         )
+
+    async def test_remote_invite(self) -> None:
+        """Tests that we can still receive invite from remote servers even if
+        the server is configured to only accept invites during room creation.
+        """
+
+        config = {
+            "can_invite_if_not_in_domain_mapping": True,
+            "can_only_invite_during_room_creation": True,
+        }
+
+        self.assertTrue(
+            await self._test_user_may_invite(
+                config,
+                "@test:source_two",
+                "@test2:source_one",
+                False,
+                False,
+                unknown_room=True,
+            )
+        )

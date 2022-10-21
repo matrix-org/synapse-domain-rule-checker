@@ -38,6 +38,8 @@ class MockModuleApi:
     _published: bool
     _unknown_room: bool
 
+    server_name: str = "source_one"
+
     def register_spam_checker_callbacks(self, *args: Any, **kwargs: Any) -> None:
         """Don't fail when the module tries to register its callbacks."""
         pass
