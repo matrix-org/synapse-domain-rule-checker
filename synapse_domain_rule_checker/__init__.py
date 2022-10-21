@@ -147,8 +147,8 @@ class DomainRuleChecker(object):
 
         if (
             self._config.can_only_invite_during_room_creation
-            # only apply to room created locally,
-            # invites coming through fed should still go further
+            # Only check if the room is new for rooms created locally, because we
+            # can't reliably figure out whether a remote invite is for a new room.
             and inviter_domain == self._api.server_name
         ):
             # If we can only invite during room creation, check whether this invite is
