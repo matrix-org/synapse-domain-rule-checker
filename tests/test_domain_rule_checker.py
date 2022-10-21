@@ -316,9 +316,6 @@ class DomainRuleCheckerTestCase(aiounittest.AsyncTestCase):
     async def test_remote_invite(self) -> None:
         """Tests that we can still receive invite from remote servers even if
         the server is configured to only accept invites during room creation.
-
-        It is possible to receive an invite for a room we don't have state for if we've
-        received the invite over federation and we're not yet in the room.
         """
 
         config = {
