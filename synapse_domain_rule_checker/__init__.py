@@ -143,7 +143,14 @@ class DomainRuleChecker(object):
             Whether the invite can be allowed to go through.
         """
 
-        if self._config.can_only_invite_during_room_creation:
+        inviter_domain = self._get_domain_from_id(inviter_userid)
+
+        if (
+            self._config.can_only_invite_during_room_creation
+            # only apply to room created locally,
+            # invites coming through fed should still go further
+            and inviter_domain == self._api.server_name
+        ):
             # If we can only invite during room creation, check whether this invite is
             # for a room that fits our definition of new.
             if not await self._is_new_room(room_id):
@@ -155,7 +162,6 @@ class DomainRuleChecker(object):
         if invitee_userid is None:
             return self._config.can_invite_by_third_party_id
 
-        inviter_domain = self._get_domain_from_id(inviter_userid)
         invitee_domain = self._get_domain_from_id(invitee_userid)
 
         published_room = (
