@@ -1,8 +1,6 @@
 name: Linting and Tests
-on:
-  push:
-    branches: ["main"]
-  pull_request:
+
+on: [push, pull_request]
 
 jobs: 
   check-code-style:
@@ -34,7 +32,7 @@ jobs:
       matrix:
         # Run the unit tests both against our oldest supported Python version
         # and the newest stable.
-        python_version: [ "3.7", "3.x" ]
+        python_version: [ "3.11-rc", "3.10", "3.9" ]
     steps: 
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
