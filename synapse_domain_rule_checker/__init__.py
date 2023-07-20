@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 from typing import Any, Dict, List, Optional
 
 import attr
@@ -123,6 +124,15 @@ class DomainRuleChecker(object):
             inviter_userid=inviter_userid,
             invitee_userid=None,
         )
+    
+    def _matches_domain_mapping(self, inviter_domain: str, invitee_domain: str) -> bool:
+        """Check if the inviter and invitee domains match the regex rules in the domain mapping."""
+        for inviter_regex, invitee_regex_list in self._domain_mapping.items():
+            if re.match(inviter_regex, inviter_domain):
+                for invitee_regex in invitee_regex_list:
+                    if re.match(invitee_regex, invitee_domain):
+                        return True
+        return False
 
     async def _user_may_invite(
         self,
@@ -131,7 +141,7 @@ class DomainRuleChecker(object):
         invitee_userid: Optional[str],
     ) -> bool:
         """Processes any incoming invite, both normal Matrix invites and 3PID ones, and
-        check if they should be allowed.
+        checks if they should be allowed.
 
         Args:
             room_id: The ID of the room the invite is happening in.
@@ -142,7 +152,6 @@ class DomainRuleChecker(object):
         Returns:
             Whether the invite can be allowed to go through.
         """
-
         inviter_domain = self._get_domain_from_id(inviter_userid)
 
         if (
@@ -177,10 +186,11 @@ class DomainRuleChecker(object):
         ):
             return False
 
-        if inviter_domain not in self._domain_mapping:
+        # Use the new method here to check if inviter and invitee domains match any of the regex rules.
+        if not self._matches_domain_mapping(inviter_domain, invitee_domain):
             return self._config.can_invite_if_not_in_domain_mapping
 
-        return invitee_domain in self._domain_mapping[inviter_domain]
+        return True
 
     async def user_may_join_room(
         self,

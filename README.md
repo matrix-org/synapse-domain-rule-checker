@@ -21,8 +21,8 @@ modules:
       # A mapping describing which servers a server can invite into a room.
       # Default is any server can invite any other server.
       domain_mapping:
-        "inviter_domain": [ "invitee_domain_permitted", "other_domain_permitted" ]
-        "other_inviter_domain": [ "invitee_domain_permitted" ]
+        "inviter_domain": [ ".*\.client\.com", ".*\.customer\.com" ]
+        "other_inviter_domain": [ ".*" ]
 
       # Whether an invite should be allowed through if the inviting server doesn't appear
       # in the domain_mapping.
@@ -42,7 +42,7 @@ modules:
       # public room directory. This setting only really works in a closed federation in
       # which every server agrees on the list.
       # Defaults to all servers being allowed.
-      domains_prevented_from_being_invited_to_published_rooms: []
+      domains_prevented_from_being_invited_to_published_rooms: ["malicious\.com", "spam\.org"]
 
       # Whether a local user can invite another user using a third-party identifier (e.g.
       # an email address).
