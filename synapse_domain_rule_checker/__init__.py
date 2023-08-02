@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Optional
+import re
+from re import Pattern
+from typing import Any, Dict, List, Optional, Set, TypeGuard, cast
 
 import attr
 from synapse.module_api import ModuleApi
@@ -31,19 +33,41 @@ class Membership:
 @attr.s(auto_attribs=True, frozen=True)
 class DomainRuleCheckerConfig:
     can_invite_if_not_in_domain_mapping: bool
-    domain_mapping: Optional[Dict[str, List[str]]] = None
+    use_regex: bool = False
+    domain_mapping: Dict[str, List[str]] = dict()
     can_only_join_rooms_with_invite: bool = False
     can_only_invite_during_room_creation: bool = False
     can_invite_by_third_party_id: bool = True
-    domains_prevented_from_being_invited_to_published_rooms: Optional[List[str]] = None
+    domains_prevented_from_being_invited_to_published_rooms: List[str] = []
+
+    def domain_map(self) -> Dict[Pattern[str], Set[Pattern[str]]] | Dict[str, Set[str]]:
+        if self.use_regex:
+            return {
+                re.compile(inviter): {re.compile(invitee) for invitee in invitee_list}
+                for inviter, invitee_list in self.domain_mapping.items()
+            }
+
+        return {
+            inviter: set(invitee_list)
+            for inviter, invitee_list in self.domain_mapping.items()
+        }
+
+    def prevented_domains(self) -> Set[Pattern[str]] | Set[str]:
+        if self.use_regex:
+            return {
+                re.compile(domain)
+                for domain in self.domains_prevented_from_being_invited_to_published_rooms
+            }
+
+        return set(self.domains_prevented_from_being_invited_to_published_rooms)
 
 
 class DomainRuleChecker(object):
     def __init__(self, config: DomainRuleCheckerConfig, api: ModuleApi):
         self._config = config
-        self._domain_mapping = config.domain_mapping or {}
+        self._domain_mapping = config.domain_map()
         self._domains_prevented_from_being_invited_to_published_rooms = (
-            config.domains_prevented_from_being_invited_to_published_rooms or []
+            config.prevented_domains()
         )
         self._api = api
 
@@ -170,17 +194,57 @@ class DomainRuleChecker(object):
             )
         )
 
-        if (
-            published_room
-            and invitee_domain
-            in self._domains_prevented_from_being_invited_to_published_rooms
+        if published_room and self.match_from_domains(
+            self._domains_prevented_from_being_invited_to_published_rooms,
+            invitee_domain,
         ):
             return False
 
-        if inviter_domain not in self._domain_mapping:
+        return self.is_domain_mapping_passing(inviter_domain, invitee_domain)
+
+    def is_domain_mapping_passing(
+        self, inviter_domain: str, invitee_domain: str
+    ) -> bool:
+        matching_invitees = self.domain_matching_invitees(inviter_domain)
+        if matching_invitees is None:
             return self._config.can_invite_if_not_in_domain_mapping
 
-        return invitee_domain in self._domain_mapping[inviter_domain]
+        return self.match_from_domains(matching_invitees, invitee_domain)
+
+    def domain_matching_invitees(
+        self, inviter_domain: str
+    ) -> Optional[Set[Pattern[str]] | Set[str]]:
+        if self.is_string_dict(self._domain_mapping):
+            return self._domain_mapping.get(inviter_domain)
+
+        # casting should be totally fine here, at this point, we know that _domain_mapping has to be a regex
+        domain_mapping = cast(
+            Dict[Pattern[str], Set[Pattern[str]]], self._domain_mapping
+        )
+        matched = False
+        matching: List[Set[Pattern[str]]] = []
+
+        for inviter, invitees in domain_mapping.items():
+            if inviter.fullmatch(inviter_domain):
+                matched = True
+                matching.append(invitees)
+
+        if not matched:
+            return None
+
+        return set.union(*matching)
+
+    def match_from_domains(
+        self, domains_to_match: Set[Pattern[str]] | Set[str], domain: str
+    ) -> bool:
+        if not self._config.use_regex:
+            return domain in domains_to_match
+
+        for domain_pattern in domains_to_match:
+            if domain_pattern.fullmatch(domain):  # type: ignore
+                return True
+
+        return False
 
     async def user_may_join_room(
         self,
@@ -193,6 +257,11 @@ class DomainRuleChecker(object):
             return False
 
         return True
+
+    def is_string_dict(
+        self, container: Dict[Pattern[str], Set[Pattern[str]]] | Dict[str, Set[str]]
+    ) -> TypeGuard[Dict[str, Set[str]]]:
+        return not self._config.use_regex
 
     @staticmethod
     def parse_config(config: Dict[str, Any]) -> DomainRuleCheckerConfig:

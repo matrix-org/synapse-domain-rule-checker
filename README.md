@@ -18,6 +18,9 @@ Then alter your homeserver configuration, adding to your `modules` configuration
 modules:
   - module: synapse_domain_rule_checker.DomainRuleChecker
     config:
+      # Use regex for all domain comparisons
+      use_regex: false
+
       # A mapping describing which servers a server can invite into a room.
       # Default is any server can invite any other server.
       domain_mapping:
